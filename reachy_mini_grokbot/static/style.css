@@ -1,0 +1,52 @@
+body {
+    font-family: sans-serif;
+    margin: 24px;
+    max-width: 40rem;
+    color: #1e293b;
+}
+
+.lede {
+    color: #475569;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+}
+
+textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font: inherit;
+    margin-bottom: 0.75rem;
+}
+
+button {
+    padding: 10px 20px;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+    border-radius: 6px;
+    background-color: #3498db;
+}
+
+#controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+#controls button {
+    background-color: #64748b;
+}
+
+#status {
+    margin-top: 16px;
+    font-weight: bold;
+    white-space: pre-wrap;
+}

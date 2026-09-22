@@ -1,8 +1,9 @@
-agents.local.md
+__pycache__/
+*.egg-info/
+build/
 .env
 .env.local
 .venv/
-__pycache__/
+agents.local.md
 *.pyc
-node_modules/
-dist/
+.pytest_cache/
