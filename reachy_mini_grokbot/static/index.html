@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Reachy Mini × Grok Bot</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <h1>Reachy Mini × Grok Bot</h1>
+    <p class="lede">Send an utterance to your chief of staff. The Bot talks back through MCP <code>speak</code>.</p>
+
+    <label for="utterance">What should the chief of staff hear?</label>
+    <textarea id="utterance" rows="4" placeholder="What's in my inbox that I should know about?"></textarea>
+    <button id="send-btn" type="button">Send to chief of staff</button>
+    <div id="status">Checking configuration…</div>
+
+    <h2>Local tools</h2>
+    <div id="controls">
+        <button type="button" data-tool="show" data-emotion="listening">Listen pose</button>
+        <button type="button" data-tool="show" data-emotion="joy">Joy</button>
+        <button type="button" data-tool="rest" data-mode="neutral">Neutral</button>
+    </div>
+    <script src="/static/main.js"></script>
+</body>
+
+</html>
