@@ -38,14 +38,36 @@ Paste the routine text from [`routines/chief-of-staff.md`](routines/chief-of-sta
 
 ## Setup
 
-1. Install the [Reachy Mini SDK](https://github.com/pollen-robotics/reachy_mini) and start the daemon (`reachy-mini-daemon` or `--sim`).
-2. Copy `.env.example` to `.env`.
-3. On the chief of staff Bot: Routines → When to run → Webhook. Save, keep **Active**, copy URL and key into `.env` as `GROK_BOT_WEBHOOK_URL` and `GROK_BOT_WEBHOOK_KEY`.
-4. Tunnel MCP port `8765` (and optionally `8042`) to a public HTTPS URL. Put that base in `PUBLIC_BASE_URL`. Add it as a Grok Bot **custom MCP** connector and `@` it from the Bot.
-5. Run:
+### Python environment (macOS / Linux)
+
+The repo does not ship a `.venv` folder (it is gitignored). Create it once, then activate it in every new terminal:
 
 ```bash
+cd reachy-mini
+./scripts/setup.sh          # creates .venv, pip install -e ., copies .env if missing
+source .venv/bin/activate   # required in each new shell before running the app
+```
+
+Or manually:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
 pip install -e .
+cp .env.example .env
+```
+
+Install the [Reachy Mini SDK](https://github.com/pollen-robotics/reachy_mini) in the same venv if `reachy-mini` is not already installed (`reachy-mini-daemon` must be on your PATH).
+
+### Grok Bot + run
+
+1. Start the daemon (`reachy-mini-daemon` on Lite, or `--sim` without hardware).
+2. Edit `.env`: `GROK_BOT_WEBHOOK_URL`, `GROK_BOT_WEBHOOK_KEY`, and `PUBLIC_BASE_URL` (tunnel to MCP port `8765`).
+3. On the chief of staff Bot: Routines → When to run → Webhook. Save, keep **Active**. Paste [`routines/chief-of-staff.md`](routines/chief-of-staff.md). Add a **custom MCP** connector (tunneled URL) and `@` it from the Bot.
+4. With the venv activated:
+
+```bash
 python -m reachy_mini_grokbot.main
 ```
 
