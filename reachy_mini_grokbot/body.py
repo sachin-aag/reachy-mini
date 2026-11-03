@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import math
 import threading
+from functools import lru_cache
 from typing import Any
 
 from reachy_mini.utils import create_head_pose
@@ -23,6 +24,14 @@ from reachy_mini_grokbot.expressions import (
 
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=None)
+def _library(dataset: str) -> Any:
+    """Load a Pollen recorded-move dataset once; it is slow on the robot's onboard computer."""
+    from reachy_mini.motion.recorded_move import RecordedMoves
+
+    return RecordedMoves(dataset)
 
 
 def _clamp(value: float, lo: float, hi: float) -> float:
@@ -97,9 +106,7 @@ class RobotBody:
         if dataset is None:
             return f"Unknown library {library!r}. Use {list(MOVE_LIBRARIES)}."
         try:
-            from reachy_mini.motion.recorded_move import RecordedMoves
-
-            moves = RecordedMoves(dataset)
+            moves = _library(dataset)
             clip = moves.get(move_name)
             with self._lock:
                 self.mini.play_move(clip, initial_goto_duration=1.0)
@@ -114,9 +121,7 @@ class RobotBody:
         if dataset is None:
             return f"Unknown library {library!r}. Use {list(MOVE_LIBRARIES)}."
         try:
-            from reachy_mini.motion.recorded_move import RecordedMoves
-
-            moves = RecordedMoves(dataset)
+            moves = _library(dataset)
             names = sorted(moves.list_moves()) if hasattr(moves, "list_moves") else sorted(getattr(moves, "moves", {}))
             if not names and hasattr(moves, "keys"):
                 names = sorted(moves.keys())

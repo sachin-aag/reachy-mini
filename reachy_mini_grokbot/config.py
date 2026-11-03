@@ -20,12 +20,12 @@ def _env(name: str, default: str = "") -> str:
 class Settings:
     """Runtime settings loaded from the environment."""
 
-    daemon_url: str
     webhook_url: str
     webhook_key: str
     public_base_url: str
     mcp_host: str
     mcp_port: int
+    mcp_token: str
     xai_api_key: str
     grok_voice: str
     deepgram_api_key: str
@@ -39,12 +39,12 @@ class Settings:
 def load_settings() -> Settings:
     """Load settings from process environment."""
     return Settings(
-        daemon_url=_env("REACHY_DAEMON_URL", "http://127.0.0.1:8000/api"),
         webhook_url=_env("GROK_BOT_WEBHOOK_URL"),
         webhook_key=_env("GROK_BOT_WEBHOOK_KEY"),
         public_base_url=_env("PUBLIC_BASE_URL"),
-        mcp_host=_env("MCP_HOST", "0.0.0.0"),
+        mcp_host=_env("MCP_HOST", "127.0.0.1"),
         mcp_port=int(_env("MCP_PORT", "8765") or "8765"),
+        mcp_token=_env("MCP_TOKEN"),
         xai_api_key=_env("XAI_API_KEY"),
         grok_voice=_env("GROK_VOICE", "eve") or "eve",
         deepgram_api_key=_env("DEEPGRAM_API_KEY"),

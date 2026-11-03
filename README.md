@@ -38,11 +38,12 @@ Paste the routine text from [`routines/chief-of-staff.md`](routines/chief-of-sta
 
 ## Setup
 
-1. Install the [Reachy Mini SDK](https://github.com/pollen-robotics/reachy_mini) and start the daemon (`reachy-mini-daemon` or `--sim`).
+1. Install the [Reachy Mini SDK](https://github.com/pollen-robotics/reachy_mini) and start the daemon (`reachy-mini-daemon` or `--sim`). A Wireless runs its own daemon; the SDK finds it on localhost or the network.
 2. Copy `.env.example` to `.env`.
 3. On the chief of staff Bot: Routines → When to run → Webhook. Save, keep **Active**, copy URL and key into `.env` as `GROK_BOT_WEBHOOK_URL` and `GROK_BOT_WEBHOOK_KEY`.
-4. Tunnel MCP port `8765` (and optionally `8042`) to a public HTTPS URL. Put that base in `PUBLIC_BASE_URL`. Add it as a Grok Bot **custom MCP** connector and `@` it from the Bot.
-5. Run:
+4. Set `MCP_TOKEN` to a long random string (`python -c "import secrets; print(secrets.token_urlsafe(32))"`). MCP will not start without it.
+5. Tunnel MCP port `8765` to a public HTTPS URL. Keep `8042` (control UI and REST tools) on your LAN. Put the tunnel base in `PUBLIC_BASE_URL`. Add `<PUBLIC_BASE_URL>/mcp` as a Grok Bot **custom MCP** connector with header `Authorization: Bearer <MCP_TOKEN>` (or append `?token=<MCP_TOKEN>` if the connector cannot send headers), and `@` it from the Bot.
+6. Run:
 
 ```bash
 pip install -e .
