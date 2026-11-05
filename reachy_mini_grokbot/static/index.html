@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Reachy Scribe & Docs Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <header>
+        <h1>Reachy Scribe & Docs Chat</h1>
+    </header>
+    
+    <main>
+        <!-- First-Run Setup Banner -->
+        <section id="setup-banner" class="card setup-banner" style="display: none;">
+            <h2>🎉 Welcome! First-Time Setup</h2>
+            <p>Create a PIN to secure your settings. This only works for the first <span id="setup-window">30</span> minutes after the app starts.</p>
+            
+            <div class="form-group">
+                <label for="new-pin">Create PIN (6+ digits)</label>
+                <div class="input-group">
+                    <input type="password" id="new-pin" placeholder="Enter 6+ digit PIN" pattern="[0-9]*" inputmode="numeric" autocomplete="off">
+                    <button type="button" class="btn btn-icon toggle-visibility">👁️</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="confirm-pin">Confirm PIN</label>
+                <div class="input-group">
+                    <input type="password" id="confirm-pin" placeholder="Confirm PIN" pattern="[0-9]*" inputmode="numeric" autocomplete="off">
+                    <button type="button" class="btn btn-icon toggle-visibility">👁️</button>
+                </div>
+            </div>
+            <button type="button" id="create-pin-btn" class="btn btn-primary btn-large">Create PIN</button>
+            <div id="pin-create-status" class="status-message"></div>
+        </section>
+
+        <!-- Forgot PIN / Reset Section -->
+        <section id="reset-section" class="card" style="display: none;">
+            <h2>⚠️ Forgot PIN?</h2>
+            <p>Reset is available for <span id="reset-window">5</span> minutes after app restart. This will <strong>delete all saved settings</strong> including API keys.</p>
+            <button type="button" id="reset-btn" class="btn btn-danger">Reset PIN & Settings</button>
+            <div id="reset-status" class="status-message"></div>
+            <p class="help-text">To reset later: restart the app from the Reachy Mini Control app, then come back here within 5 minutes.</p>
+        </section>
+
+        <!-- Status Panel -->
+        <section class="card status-panel">
+            <h2>Status</h2>
+            <div class="status-grid">
+                <div class="status-item">
+                    <span class="status-label">Mode</span>
+                    <span id="current-mode" class="status-value mode-badge">--</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Control</span>
+                    <span id="control-status" class="status-value">--</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Last Poll</span>
+                    <span id="last-poll" class="status-value">--</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Gemini</span>
+                    <span id="gemini-status" class="status-value">--</span>
+                </div>
+            </div>
+            <div id="offline-banner" class="banner banner-warning" style="display: none;">
+                ⚠️ Control endpoint unreachable
+            </div>
+        </section>
+
+        <!-- Quick Actions -->
+        <section class="card">
+            <h2>Robot Controls</h2>
+            <div class="button-grid">
+                <button type="button" class="btn btn-control" data-tool="show" data-emotion="listening">👂 Listen</button>
+                <button type="button" class="btn btn-control" data-tool="show" data-emotion="joy">😊 Joy</button>
+                <button type="button" class="btn btn-control" data-tool="show" data-emotion="curious">🤔 Curious</button>
+                <button type="button" class="btn btn-control" data-tool="rest" data-mode="neutral">😐 Neutral</button>
+                <button type="button" class="btn btn-control" data-tool="rest" data-mode="sleep">😴 Sleep</button>
+            </div>
+            <div id="tool-status" class="status-message"></div>
+        </section>
+
+        <!-- Configuration Section -->
+        <section id="config-section" class="card config-section">
+            <h2>Configuration</h2>
+            
+            <!-- Auth Token Input -->
+            <div class="auth-section">
+                <label for="auth-token">Your PIN</label>
+                <div class="input-group">
+                    <input type="password" id="auth-token" placeholder="Enter your PIN" pattern="[0-9]*" inputmode="numeric" autocomplete="off">
+                    <button type="button" id="toggle-auth" class="btn btn-icon">👁️</button>
+                </div>
+                <p class="help-text">Required to save changes. <a href="#" id="show-reset-link">Forgot PIN?</a></p>
+            </div>
+
+            <!-- API Keys Section -->
+            <details class="config-group" open>
+                <summary>API Keys</summary>
+                
+                <div class="form-group">
+                    <label for="gemini-key">Gemini API Key <span class="required">*</span></label>
+                    <div class="input-group">
+                        <input type="password" id="gemini-key" placeholder="Enter API key" autocomplete="off">
+                        <button type="button" class="btn btn-icon toggle-visibility">👁️</button>
+                    </div>
+                    <div class="key-status">
+                        <span id="gemini-key-status" class="status-badge">--</span>
+                        <button type="button" id="test-gemini" class="btn btn-small">Test</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="control-token">Control Token</label>
+                    <div class="input-group">
+                        <input type="password" id="control-token" placeholder="Enter token" autocomplete="off">
+                        <button type="button" class="btn btn-icon toggle-visibility">👁️</button>
+                    </div>
+                    <span id="control-token-status" class="status-badge">--</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="control-url">Control URL</label>
+                    <input type="url" id="control-url" placeholder="https://creators-ecosystem.de">
+                </div>
+            </details>
+
+            <!-- Optional Keys -->
+            <details class="config-group">
+                <summary>Optional Fallback Keys</summary>
+                
+                <div class="form-group">
+                    <label for="xai-key">xAI API Key (TTS fallback)</label>
+                    <div class="input-group">
+                        <input type="password" id="xai-key" placeholder="Enter API key" autocomplete="off">
+                        <button type="button" class="btn btn-icon toggle-visibility">👁️</button>
+                    </div>
+                    <span id="xai-key-status" class="status-badge">--</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="deepgram-key">Deepgram API Key (STT fallback)</label>
+                    <div class="input-group">
+                        <input type="password" id="deepgram-key" placeholder="Enter API key" autocomplete="off">
+                        <button type="button" class="btn btn-icon toggle-visibility">👁️</button>
+                    </div>
+                    <span id="deepgram-key-status" class="status-badge">--</span>
+                </div>
+            </details>
+
+            <!-- Google Service Account -->
+            <details class="config-group">
+                <summary>Google Service Account</summary>
+                
+                <div class="form-group">
+                    <label for="sa-file">Service Account JSON</label>
+                    <input type="file" id="sa-file" accept=".json,application/json">
+                    <span id="sa-status" class="status-badge">--</span>
+                    <p class="help-text">Required for Scribe and Docs Chat modes (Google Drive/Docs access)</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="sa-paste">Or paste JSON directly:</label>
+                    <textarea id="sa-paste" rows="4" placeholder='{"type": "service_account", ...}'></textarea>
+                </div>
+                
+                <button type="button" id="upload-sa" class="btn btn-secondary">Upload Service Account</button>
+            </details>
+
+            <!-- Voice Settings -->
+            <details class="config-group">
+                <summary>Voice & Speech Settings</summary>
+                
+                <div class="form-group">
+                    <label for="tts-provider">TTS Provider</label>
+                    <select id="tts-provider">
+                        <option value="gemini" selected>Gemini (default)</option>
+                        <option value="xai">xAI</option>
+                        <option value="deepgram">Deepgram</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="stt-provider">STT Provider</label>
+                    <select id="stt-provider">
+                        <option value="gemini" selected>Gemini (default)</option>
+                        <option value="deepgram">Deepgram</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="tts-voice">TTS Voice</label>
+                    <select id="tts-voice">
+                        <optgroup label="Gemini">
+                            <option value="Kore" selected>Kore</option>
+                            <option value="Charon">Charon</option>
+                            <option value="Fenrir">Fenrir</option>
+                            <option value="Aoede">Aoede</option>
+                            <option value="Puck">Puck</option>
+                            <option value="Leda">Leda</option>
+                            <option value="Orus">Orus</option>
+                            <option value="Zephyr">Zephyr</option>
+                        </optgroup>
+                        <optgroup label="xAI">
+                            <option value="ara">Ara</option>
+                            <option value="eve">Eve</option>
+                            <option value="leo">Leo</option>
+                            <option value="rex">Rex</option>
+                            <option value="sal">Sal</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="custom-vocab">Custom Vocabulary</label>
+                    <input type="text" id="custom-vocab" placeholder="Reachy, Grok Bot, Sachin">
+                    <p class="help-text">Comma-separated names for better STT recognition</p>
+                </div>
+            </details>
+
+            <!-- Save Button -->
+            <div class="save-section">
+                <button type="button" id="save-config" class="btn btn-primary btn-large">Save All Settings</button>
+                <div id="save-status" class="status-message"></div>
+            </div>
+        </section>
+
+        <!-- Chat Section (collapsed by default on mobile) -->
+        <details class="card">
+            <summary><h2 style="display:inline">Chat with Chief of Staff</h2></summary>
+            <div class="form-group">
+                <label for="utterance">What should the chief of staff hear?</label>
+                <textarea id="utterance" rows="3" placeholder="What's in my inbox that I should know about?"></textarea>
+                <button id="send-btn" type="button" class="btn btn-primary">Send</button>
+                <div id="utterance-status" class="status-message"></div>
+            </div>
+        </details>
+    </main>
+
+    <footer>
+        <p>Settings saved to <code>~/.reachy_grokbot/</code></p>
+    </footer>
+
+    <script src="/static/main.js"></script>
+</body>
+
+</html>
