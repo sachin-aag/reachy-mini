@@ -10,6 +10,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Callable, Literal
 
 import httpx
@@ -63,7 +64,8 @@ class ControlClient:
         self._current_state = ControlState()
         self._etag: str | None = None
         self._consecutive_errors = 0
-        self._last_success_time = time.monotonic()
+        self._last_success_mono = time.monotonic()
+        self._last_success_time: datetime | None = None
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
@@ -78,7 +80,7 @@ class ControlClient:
     def is_offline(self) -> bool:
         """True if we haven't reached the server in longer than the offline timeout."""
         timeout = self._settings.control_offline_timeout
-        return (time.monotonic() - self._last_success_time) > timeout
+        return (time.monotonic() - self._last_success_mono) > timeout
 
     def _build_url(self) -> str:
         """Build the full endpoint URL."""
@@ -98,7 +100,8 @@ class ControlClient:
 
             if response.status_code == 304:
                 self._consecutive_errors = 0
-                self._last_success_time = time.monotonic()
+                self._last_success_mono = time.monotonic()
+                self._last_success_time = datetime.now(timezone.utc)
                 return None
 
             if response.status_code == 401:
@@ -112,7 +115,8 @@ class ControlClient:
                 return None
 
             self._consecutive_errors = 0
-            self._last_success_time = time.monotonic()
+            self._last_success_mono = time.monotonic()
+            self._last_success_time = datetime.now(timezone.utc)
             new_etag = response.headers.get("ETag")
             self._etag = new_etag
             return ControlState.from_response(response.json(), etag=new_etag)

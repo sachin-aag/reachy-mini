@@ -4,110 +4,217 @@
 <head>
     <meta charset="UTF-8">
     <title>Reachy Mini × Grok Bot</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
-    <h1>Reachy Mini × Grok Bot</h1>
+    <header>
+        <h1>Reachy Mini × Grok Bot</h1>
+    </header>
     
-    <section class="status-panel">
-        <h2>Status</h2>
-        <div id="mode-status" class="mode-indicator">
-            <span class="mode-label">Mode:</span>
-            <span id="current-mode" class="mode-value">--</span>
-            <span id="offline-badge" class="badge badge-warning" style="display: none;">Offline</span>
-        </div>
-        <div id="config-status">Checking configuration…</div>
-    </section>
+    <main>
+        <!-- Status Panel -->
+        <section class="card status-panel">
+            <h2>Status</h2>
+            <div class="status-grid">
+                <div class="status-item">
+                    <span class="status-label">Mode</span>
+                    <span id="current-mode" class="status-value mode-badge">--</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Control</span>
+                    <span id="control-status" class="status-value">--</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Last Poll</span>
+                    <span id="last-poll" class="status-value">--</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Gemini</span>
+                    <span id="gemini-status" class="status-value">--</span>
+                </div>
+            </div>
+            <div id="offline-banner" class="banner banner-warning" style="display: none;">
+                ⚠️ Control endpoint unreachable
+            </div>
+        </section>
 
-    <section>
-        <h2>Chat with Chief of Staff</h2>
-        <p class="lede">Send an utterance to your chief of staff. The Bot talks back through MCP <code>speak</code>.</p>
-        <label for="utterance">What should the chief of staff hear?</label>
-        <textarea id="utterance" rows="3" placeholder="What's in my inbox that I should know about?"></textarea>
-        <button id="send-btn" type="button">Send to chief of staff</button>
-        <div id="utterance-status"></div>
-    </section>
+        <!-- Quick Actions -->
+        <section class="card">
+            <h2>Robot Controls</h2>
+            <div class="button-grid">
+                <button type="button" class="btn btn-control" data-tool="show" data-emotion="listening">👂 Listen</button>
+                <button type="button" class="btn btn-control" data-tool="show" data-emotion="joy">😊 Joy</button>
+                <button type="button" class="btn btn-control" data-tool="show" data-emotion="curious">🤔 Curious</button>
+                <button type="button" class="btn btn-control" data-tool="rest" data-mode="neutral">😐 Neutral</button>
+                <button type="button" class="btn btn-control" data-tool="rest" data-mode="sleep">😴 Sleep</button>
+            </div>
+            <div id="tool-status" class="status-message"></div>
+        </section>
 
-    <section>
-        <h2>Robot Controls</h2>
-        <div id="controls">
-            <button type="button" data-tool="show" data-emotion="listening">Listen</button>
-            <button type="button" data-tool="show" data-emotion="joy">Joy</button>
-            <button type="button" data-tool="show" data-emotion="curious">Curious</button>
-            <button type="button" data-tool="show" data-emotion="thinking">Thinking</button>
-            <button type="button" data-tool="rest" data-mode="neutral">Neutral</button>
-            <button type="button" data-tool="rest" data-mode="sleep">Sleep</button>
-        </div>
-        <div id="tool-status"></div>
-    </section>
+        <!-- Configuration Section -->
+        <section class="card config-section">
+            <h2>Configuration</h2>
+            
+            <!-- Auth Token Input -->
+            <div class="auth-section">
+                <label for="auth-token">Setup PIN or Control Token</label>
+                <div class="input-group">
+                    <input type="password" id="auth-token" placeholder="Enter PIN or token" autocomplete="off">
+                    <button type="button" id="toggle-auth" class="btn btn-icon">👁️</button>
+                </div>
+                <p class="help-text">Required to save changes. Check robot logs for the setup PIN.</p>
+            </div>
 
-    <section class="config-section">
-        <h2>Configuration</h2>
-        <p class="lede">Non-secret settings can be updated here. Secrets (API keys, tokens) must be set 
-            via environment variables or the config file on the robot.</p>
-        
-        <div class="config-form">
-            <div class="config-item">
-                <label for="control-url">Control URL</label>
-                <input type="text" id="control-url" placeholder="https://creators-ecosystem.de">
-            </div>
-            <div class="config-item">
-                <label for="tts-provider">TTS Provider</label>
-                <select id="tts-provider">
-                    <option value="gemini" selected>Gemini (default)</option>
-                    <option value="xai">xAI</option>
-                    <option value="deepgram">Deepgram</option>
-                </select>
-            </div>
-            <div class="config-item">
-                <label for="stt-provider">STT Provider</label>
-                <select id="stt-provider">
-                    <option value="gemini" selected>Gemini (default)</option>
-                    <option value="deepgram">Deepgram</option>
-                </select>
-            </div>
-            <div class="config-item">
-                <label for="tts-voice">TTS Voice</label>
-                <select id="tts-voice">
-                    <optgroup label="Gemini Voices">
-                        <option value="Kore" selected>Kore</option>
-                        <option value="Charon">Charon</option>
-                        <option value="Fenrir">Fenrir</option>
-                        <option value="Aoede">Aoede</option>
-                        <option value="Puck">Puck</option>
-                        <option value="Leda">Leda</option>
-                        <option value="Orus">Orus</option>
-                        <option value="Zephyr">Zephyr</option>
-                    </optgroup>
-                    <optgroup label="xAI Voices">
-                        <option value="ara">Ara</option>
-                        <option value="eve">Eve</option>
-                        <option value="leo">Leo</option>
-                        <option value="rex">Rex</option>
-                        <option value="sal">Sal</option>
-                    </optgroup>
-                </select>
-            </div>
-            <div class="config-item">
-                <label for="tts-language">TTS Language</label>
-                <input type="text" id="tts-language" placeholder="en" value="en">
-            </div>
-            <button id="save-config-btn" type="button" class="config-btn">Save Configuration</button>
-        </div>
-        <div id="config-save-status"></div>
+            <!-- API Keys Section -->
+            <details class="config-group" open>
+                <summary>API Keys</summary>
+                
+                <div class="form-group">
+                    <label for="gemini-key">Gemini API Key <span class="required">*</span></label>
+                    <div class="input-group">
+                        <input type="password" id="gemini-key" placeholder="Enter API key" autocomplete="off">
+                        <button type="button" class="btn btn-icon toggle-visibility">👁️</button>
+                    </div>
+                    <div class="key-status">
+                        <span id="gemini-key-status" class="status-badge">--</span>
+                        <button type="button" id="test-gemini" class="btn btn-small">Test</button>
+                    </div>
+                </div>
 
-        <h3>API Key Status</h3>
-        <ul id="secrets-status" class="secrets-list">
-            <li><span class="secret-name">GEMINI_API_KEY:</span> <span id="gemini-status">--</span></li>
-            <li><span class="secret-name">REACHY_CONTROL_TOKEN:</span> <span id="control-token-status">--</span></li>
-            <li><span class="secret-name">GOOGLE_APPLICATION_CREDENTIALS:</span> <span id="google-creds-status">--</span></li>
-            <li><span class="secret-name">XAI_API_KEY (fallback):</span> <span id="xai-status">--</span></li>
-            <li><span class="secret-name">DEEPGRAM_API_KEY (fallback):</span> <span id="deepgram-status">--</span></li>
-            <li><span class="secret-name">GROK_BOT_WEBHOOK:</span> <span id="webhook-status">--</span></li>
-        </ul>
-    </section>
+                <div class="form-group">
+                    <label for="control-token">Control Token</label>
+                    <div class="input-group">
+                        <input type="password" id="control-token" placeholder="Enter token" autocomplete="off">
+                        <button type="button" class="btn btn-icon toggle-visibility">👁️</button>
+                    </div>
+                    <span id="control-token-status" class="status-badge">--</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="control-url">Control URL</label>
+                    <input type="url" id="control-url" placeholder="https://creators-ecosystem.de">
+                </div>
+            </details>
+
+            <!-- Optional Keys -->
+            <details class="config-group">
+                <summary>Optional Fallback Keys</summary>
+                
+                <div class="form-group">
+                    <label for="xai-key">xAI API Key (TTS fallback)</label>
+                    <div class="input-group">
+                        <input type="password" id="xai-key" placeholder="Enter API key" autocomplete="off">
+                        <button type="button" class="btn btn-icon toggle-visibility">👁️</button>
+                    </div>
+                    <span id="xai-key-status" class="status-badge">--</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="deepgram-key">Deepgram API Key (STT fallback)</label>
+                    <div class="input-group">
+                        <input type="password" id="deepgram-key" placeholder="Enter API key" autocomplete="off">
+                        <button type="button" class="btn btn-icon toggle-visibility">👁️</button>
+                    </div>
+                    <span id="deepgram-key-status" class="status-badge">--</span>
+                </div>
+            </details>
+
+            <!-- Google Service Account -->
+            <details class="config-group">
+                <summary>Google Service Account</summary>
+                
+                <div class="form-group">
+                    <label for="sa-file">Service Account JSON</label>
+                    <input type="file" id="sa-file" accept=".json,application/json">
+                    <span id="sa-status" class="status-badge">--</span>
+                    <p class="help-text">Required for Scribe and Docs Chat modes (Google Drive/Docs access)</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="sa-paste">Or paste JSON directly:</label>
+                    <textarea id="sa-paste" rows="4" placeholder='{"type": "service_account", ...}'></textarea>
+                </div>
+                
+                <button type="button" id="upload-sa" class="btn btn-secondary">Upload Service Account</button>
+            </details>
+
+            <!-- Voice Settings -->
+            <details class="config-group">
+                <summary>Voice & Speech Settings</summary>
+                
+                <div class="form-group">
+                    <label for="tts-provider">TTS Provider</label>
+                    <select id="tts-provider">
+                        <option value="gemini" selected>Gemini (default)</option>
+                        <option value="xai">xAI</option>
+                        <option value="deepgram">Deepgram</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="stt-provider">STT Provider</label>
+                    <select id="stt-provider">
+                        <option value="gemini" selected>Gemini (default)</option>
+                        <option value="deepgram">Deepgram</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="tts-voice">TTS Voice</label>
+                    <select id="tts-voice">
+                        <optgroup label="Gemini">
+                            <option value="Kore" selected>Kore</option>
+                            <option value="Charon">Charon</option>
+                            <option value="Fenrir">Fenrir</option>
+                            <option value="Aoede">Aoede</option>
+                            <option value="Puck">Puck</option>
+                            <option value="Leda">Leda</option>
+                            <option value="Orus">Orus</option>
+                            <option value="Zephyr">Zephyr</option>
+                        </optgroup>
+                        <optgroup label="xAI">
+                            <option value="ara">Ara</option>
+                            <option value="eve">Eve</option>
+                            <option value="leo">Leo</option>
+                            <option value="rex">Rex</option>
+                            <option value="sal">Sal</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="custom-vocab">Custom Vocabulary</label>
+                    <input type="text" id="custom-vocab" placeholder="Reachy, Grok Bot, Sachin">
+                    <p class="help-text">Comma-separated names for better STT recognition</p>
+                </div>
+            </details>
+
+            <!-- Save Button -->
+            <div class="save-section">
+                <button type="button" id="save-config" class="btn btn-primary btn-large">Save All Settings</button>
+                <div id="save-status" class="status-message"></div>
+            </div>
+        </section>
+
+        <!-- Chat Section (collapsed by default on mobile) -->
+        <details class="card">
+            <summary><h2 style="display:inline">Chat with Chief of Staff</h2></summary>
+            <div class="form-group">
+                <label for="utterance">What should the chief of staff hear?</label>
+                <textarea id="utterance" rows="3" placeholder="What's in my inbox that I should know about?"></textarea>
+                <button id="send-btn" type="button" class="btn btn-primary">Send</button>
+                <div id="utterance-status" class="status-message"></div>
+            </div>
+        </details>
+    </main>
+
+    <footer>
+        <p>Settings saved to <code>~/.reachy_grokbot/config.json</code></p>
+    </footer>
 
     <script src="/static/main.js"></script>
 </body>

@@ -275,10 +275,10 @@ def test_is_offline_after_timeout() -> None:
     settings = make_settings(offline_timeout=0.1)
     client = ControlClient(settings)
     
-    client._last_success_time = time.monotonic() - 0.2
+    client._last_success_mono = time.monotonic() - 0.2
     assert client.is_offline is True
     
-    client._last_success_time = time.monotonic()
+    client._last_success_mono = time.monotonic()
     assert client.is_offline is False
 
 

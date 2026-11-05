@@ -62,7 +62,53 @@ Open http://127.0.0.1:8042 for the settings UI.
 
 ## Installation on Reachy Mini Wireless
 
-### Option A: Offline install (recommended for conferences/demos)
+### Phone-Only Install (No Laptop Required)
+
+**Perfect for demos and conferences** — install from the Reachy Mini Control app on your phone and configure everything from a mobile browser.
+
+#### Step 1: Install the App
+
+1. Open the **Reachy Mini Control** app on your phone
+2. Ensure your phone is on the same Wi-Fi as the robot
+3. Go to **Apps** → **Install from Hugging Face**
+4. Enter the Space URL (this must be a public Space)
+5. Wait for installation to complete
+
+#### Step 2: Configure via Mobile Settings Page
+
+1. Open your phone browser and go to:
+   - `http://reachy-mini.local:8042` (if mDNS works)
+   - Or `http://<robot-ip>:8042` (find IP in the Control app)
+
+2. **Get the Setup PIN**: The PIN is shown in the robot logs on first run. 
+   - If you can't see the logs, the PIN is stored at `~/.reachy_grokbot/.setup_pin` on the robot
+   - Alternatively, use your `REACHY_CONTROL_TOKEN` if already configured
+
+3. **Enter your API keys** in the settings page:
+   - **Gemini API Key** (required) — get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+   - **Control Token** — your token for the remote control page
+   - **Control URL** — defaults to `https://creators-ecosystem.de`
+
+4. **Test the Gemini key** — click "Test" to verify it works
+
+5. **Upload Google Service Account** (for Scribe/Docs Chat modes):
+   - Either select the JSON file or paste it directly
+   - Click "Upload Service Account"
+
+6. **Set Custom Vocabulary** — add names the robot should recognize (e.g., "Reachy, Sachin, Grok Bot")
+
+7. Click **Save All Settings**
+
+All settings are saved to `~/.reachy_grokbot/config.json` with chmod 600. Secrets never appear in logs or the HF Space.
+
+### Security Notes
+
+- **Setup PIN or Control Token required** to save any configuration
+- **Secrets are masked** in the UI (shows only last 4 characters)
+- **Config file is chmod 600** (only robot user can read)
+- **LAN-only access** — settings page is only reachable from the same network
+
+### Option A: Offline Install (If No HF Space)
 
 ```bash
 # From your dev machine, copy the package to the robot
@@ -72,50 +118,31 @@ scp -r /path/to/reachy_mini_grokbot pollen@reachy-mini.local:/tmp/reachy_mini_gr
 ssh pollen@reachy-mini.local
 /venvs/apps_venv/bin/pip install /tmp/reachy_mini_grokbot
 
-# Create config file with secrets (chmod 600 for security)
-mkdir -p ~/.reachy_grokbot
-cat > ~/.reachy_grokbot/config.json << 'EOF'
-{
-  "GEMINI_API_KEY": "your-gemini-key",
-  "REACHY_CONTROL_URL": "https://creators-ecosystem.de",
-  "REACHY_CONTROL_TOKEN": "your-control-token",
-  "GOOGLE_APPLICATION_CREDENTIALS": "/home/pollen/.reachy_grokbot/service-account.json"
-}
-EOF
-chmod 600 ~/.reachy_grokbot/config.json
-
-# Copy your Google service account JSON if using scribe/docs_chat modes
-scp /path/to/service-account.json pollen@reachy-mini.local:~/.reachy_grokbot/
-
-# Start the app via the daemon REST API
+# Start the app
 curl -X POST http://reachy-mini.local:8000/api/apps/start-app/reachy_mini_grokbot
+
+# Then configure via the mobile settings page at http://reachy-mini.local:8042
 ```
 
-### Option B: Hugging Face Space install
+### Option B: Hugging Face Space Install (API)
 
 ```bash
-# Install from a published HF Space (must be public or use HF token)
 curl -X POST http://reachy-mini.local:8000/api/apps/install \
   -H "Content-Type: application/json" \
   -d '{"name": "reachy_mini_grokbot", "source_kind": "hf_space", "url": "https://huggingface.co/spaces/<user>/reachy_mini_grokbot"}'
 ```
 
-**Private HF Space note**: The Reachy Mini dashboard does not prompt for HF tokens. For private spaces, either:
-1. Make the space public (not recommended for apps with secrets)
-2. Use offline install (Option A) — recommended
-3. Set `HF_TOKEN` in the robot's environment before installing
-
-### Updating the app
+### Updating the App
 
 ```bash
-# Offline update
+# Via REST API for HF Space apps
+curl -X POST http://reachy-mini.local:8000/api/apps/update/reachy_mini_grokbot
+
+# Or offline update
 scp -r /path/to/reachy_mini_grokbot pollen@reachy-mini.local:/tmp/
 ssh pollen@reachy-mini.local "/venvs/apps_venv/bin/pip install --upgrade /tmp/reachy_mini_grokbot"
 curl -X POST http://reachy-mini.local:8000/api/apps/stop-current-app
 curl -X POST http://reachy-mini.local:8000/api/apps/start-app/reachy_mini_grokbot
-
-# Or via REST API for HF Space apps
-curl -X POST http://reachy-mini.local:8000/api/apps/update/reachy_mini_grokbot
 ```
 
 ## Configuration

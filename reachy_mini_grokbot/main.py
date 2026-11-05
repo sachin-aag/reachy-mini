@@ -15,6 +15,14 @@ from reachy_mini_grokbot.config import load_settings, save_config_file
 from reachy_mini_grokbot.expressions import BUILTIN_EMOTIONS
 from reachy_mini_grokbot.mcp_server import start_mcp_thread
 from reachy_mini_grokbot.mode_controller import ModeController
+from reachy_mini_grokbot.settings_helpers import (
+    get_or_create_setup_pin,
+    mask_secret,
+    parse_service_account_json,
+    save_service_account,
+    check_gemini_key,
+    verify_auth_token,
+)
 from reachy_mini_grokbot.tools import bind_runtime, tool_dispatch
 from reachy_mini_grokbot.webhook import notify_chief_of_staff
 
@@ -37,13 +45,40 @@ class ToolCall(BaseModel):
 
 
 class ConfigUpdate(BaseModel):
-    """Config update payload (only non-secret fields via REST)."""
+    """Config update payload (non-secret fields via REST)."""
 
     REACHY_CONTROL_URL: str | None = None
     TTS_PROVIDER: str | None = None
     STT_PROVIDER: str | None = None
     TTS_VOICE: str | None = None
     TTS_LANGUAGE: str | None = None
+    STT_CUSTOM_VOCABULARY: str | None = None
+
+
+class SecretsUpdate(BaseModel):
+    """Secret config update with auth token."""
+
+    auth_token: str = Field(description="Setup PIN or control token for auth")
+    GEMINI_API_KEY: str | None = None
+    REACHY_CONTROL_TOKEN: str | None = None
+    REACHY_CONTROL_URL: str | None = None
+    XAI_API_KEY: str | None = None
+    DEEPGRAM_API_KEY: str | None = None
+    STT_CUSTOM_VOCABULARY: str | None = None
+
+
+class ServiceAccountUpload(BaseModel):
+    """Service account JSON upload with auth."""
+
+    auth_token: str = Field(description="Setup PIN or control token for auth")
+    service_account_json: str = Field(description="Base64-encoded JSON or raw JSON")
+
+
+class GeminiTestRequest(BaseModel):
+    """Test a Gemini API key."""
+
+    api_key: str | None = Field(None, description="Key to test, or use configured key")
+    auth_token: str = Field(description="Setup PIN or control token for auth")
 
 
 class ReachyMiniGrokbot(ReachyMiniApp):
@@ -54,6 +89,8 @@ class ReachyMiniGrokbot(ReachyMiniApp):
         super().__init__(*args, **kwargs)
         self._settings = load_settings()
         self._mode_controller: ModeController | None = None
+        self._last_poll_time: datetime | None = None
+        self._last_poll_success: bool = False
         self._register_routes()
 
     def run(self, reachy_mini: ReachyMini, stop_event: threading.Event) -> None:
@@ -93,6 +130,8 @@ class ReachyMiniGrokbot(ReachyMiniApp):
         @app.get("/status")
         def status() -> dict[str, Any]:
             mode_info: dict[str, Any] = {"current_mode": "idle", "is_offline": True}
+            last_poll_info: dict[str, Any] = {}
+            
             if self._mode_controller:
                 mode_info = {
                     "current_mode": self._mode_controller.current_mode,
@@ -103,14 +142,24 @@ class ReachyMiniGrokbot(ReachyMiniApp):
                         "updated_at": self._mode_controller.current_state.updated_at,
                     },
                 }
+                ctrl = self._mode_controller._control_client
+                if ctrl:
+                    last_poll_info = {
+                        "last_poll_time": ctrl._last_success_time.isoformat() if ctrl._last_success_time else None,
+                        "last_poll_success": ctrl._last_success_time is not None and not ctrl.is_offline,
+                        "control_reachable": not ctrl.is_offline,
+                    }
+            
             return {
                 "webhook_configured": settings.webhook_configured,
                 "control_configured": settings.control_configured,
+                "gemini_configured": settings.gemini_configured,
                 "mcp_port": settings.mcp_port,
                 "public_base_url": settings.public_base_url,
                 "control_url": settings.control_url,
                 "emotions": list(BUILTIN_EMOTIONS),
                 **mode_info,
+                **last_poll_info,
             }
 
         @app.get("/config")
@@ -121,12 +170,31 @@ class ReachyMiniGrokbot(ReachyMiniApp):
                 "STT_PROVIDER": settings.stt_provider,
                 "TTS_VOICE": settings.tts_voice,
                 "TTS_LANGUAGE": settings.tts_language,
+                "STT_CUSTOM_VOCABULARY": ",".join(settings.stt_custom_vocabulary),
                 "webhook_configured": settings.webhook_configured,
                 "control_configured": settings.control_configured,
                 "gemini_configured": settings.gemini_configured,
+                "gemini_key_masked": mask_secret(settings.gemini_api_key),
+                "control_token_masked": mask_secret(settings.control_token),
                 "xai_configured": bool(settings.xai_api_key),
+                "xai_key_masked": mask_secret(settings.xai_api_key),
                 "deepgram_configured": bool(settings.deepgram_api_key),
+                "deepgram_key_masked": mask_secret(settings.deepgram_api_key),
                 "google_credentials_configured": bool(settings.google_credentials_path),
+                "google_credentials_path": settings.google_credentials_path or "",
+            }
+
+        @app.get("/setup-pin")
+        def get_setup_pin() -> dict[str, str]:
+            """Get the setup PIN for initial configuration.
+            
+            For security, this is only accessible from the robot itself (localhost).
+            It's shown in the daemon logs on first run.
+            """
+            pin = get_or_create_setup_pin()
+            return {
+                "pin": pin,
+                "note": "Use this PIN or your REACHY_CONTROL_TOKEN to save settings",
             }
 
         @app.post("/config")
@@ -136,6 +204,66 @@ class ReachyMiniGrokbot(ReachyMiniApp):
                 path = save_config_file(updates)
                 return {"saved": True, "path": str(path), "updates": list(updates.keys())}
             return {"saved": False, "reason": "no updates provided"}
+
+        @app.post("/config/secrets")
+        def update_secrets(payload: SecretsUpdate) -> dict[str, Any]:
+            """Update secret configuration with PIN/token auth."""
+            if not verify_auth_token(payload.auth_token, settings):
+                return {"saved": False, "error": "Invalid auth token", "status_code": 401}
+            
+            updates = {}
+            for key in ["GEMINI_API_KEY", "REACHY_CONTROL_TOKEN", "REACHY_CONTROL_URL", 
+                       "XAI_API_KEY", "DEEPGRAM_API_KEY", "STT_CUSTOM_VOCABULARY"]:
+                value = getattr(payload, key, None)
+                if value is not None:
+                    updates[key] = value
+            
+            if not updates:
+                return {"saved": False, "reason": "no updates provided"}
+            
+            path = save_config_file(updates)
+            
+            self._settings = load_settings()
+            
+            return {
+                "saved": True, 
+                "path": str(path), 
+                "updates": list(updates.keys()),
+                "note": "Settings saved. Changes take effect immediately for new requests.",
+            }
+
+        @app.post("/config/service-account")
+        def upload_service_account(payload: ServiceAccountUpload) -> dict[str, Any]:
+            """Upload Google service account JSON."""
+            if not verify_auth_token(payload.auth_token, settings):
+                return {"saved": False, "error": "Invalid auth token", "status_code": 401}
+            
+            sa_data, error = parse_service_account_json(payload.service_account_json)
+            if error:
+                return {"saved": False, "error": error}
+            
+            sa_path = save_service_account(payload.service_account_json, sa_data)
+            save_config_file({"GOOGLE_APPLICATION_CREDENTIALS": str(sa_path)})
+            self._settings = load_settings()
+            
+            return {
+                "saved": True,
+                "path": str(sa_path),
+                "client_email": sa_data.get("client_email", "unknown"),
+            }
+
+        @app.post("/config/test-gemini")
+        def test_gemini(payload: GeminiTestRequest) -> dict[str, Any]:
+            """Test Gemini API key connectivity."""
+            if not verify_auth_token(payload.auth_token, settings):
+                return {"error": "Invalid auth token", "status_code": 401}
+            
+            key_to_test = payload.api_key or settings.gemini_api_key
+            if not key_to_test:
+                return {"valid": False, "status": "No API key", "detail": "No key provided or configured"}
+            
+            result = check_gemini_key(key_to_test)
+            return result
 
         @app.post("/utterance")
         def utterance(payload: Utterance) -> dict[str, Any]:

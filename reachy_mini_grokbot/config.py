@@ -20,6 +20,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG_PATH = Path.home() / ".reachy_grokbot" / "config.json"
+CONFIG_PATH = DEFAULT_CONFIG_PATH
 DEFAULT_CONTROL_URL = "https://creators-ecosystem.de"
 
 TTSProvider = Literal["gemini", "xai", "deepgram"]
