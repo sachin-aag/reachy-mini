@@ -31,23 +31,23 @@ def require_body() -> RobotBody:
     return _BODY
 
 
-def speak(text: str, voice: str = "eve") -> str:
-    """Speak on the robot. Plays TTS when a key is present; always runs move markers."""
+def speak(text: str, voice: str = "") -> str:
+    """Speak on the robot. Plays TTS when configured; always runs move markers."""
     body = require_body()
     settings = _SETTINGS
     spoken = " ".join(
         segment["content"] for segment in parse_choreographed_text(text) if segment["type"] == "text"
     ).strip() or text
     notes = body.speak_markers(text)
-    audio_note = "no TTS key configured; text only"
-    if settings is not None:
-        path = synthesize_speech(spoken, settings.xai_api_key, voice or settings.grok_voice, settings.deepgram_api_key)
+    audio_note = "no TTS configured; text only"
+    if settings is not None and settings.tts_configured:
+        path = synthesize_speech(spoken, settings, voice_override=voice if voice else None)
         if path is not None:
             try:
                 media = getattr(body.mini, "media", None)
                 if media is not None and hasattr(media, "play_sound"):
                     media.play_sound(str(path))
-                    audio_note = f"played {path.name}"
+                    audio_note = f"played {path.name} via {settings.tts_provider}"
                 else:
                     audio_note = f"synthesized {path.name} but media.play_sound is unavailable"
             finally:
@@ -105,7 +105,7 @@ def discover(library: str = "emotions") -> str:
 def tool_dispatch(name: str, arguments: dict[str, Any]) -> str:
     """Dispatch a REST tool call by name."""
     handlers = {
-        "speak": lambda: speak(str(arguments.get("text", "")), str(arguments.get("voice", "eve"))),
+        "speak": lambda: speak(str(arguments.get("text", "")), str(arguments.get("voice", ""))),
         "look": lambda: look(
             direction=str(arguments.get("direction", "")),
             roll=float(arguments.get("roll", 0) or 0),
