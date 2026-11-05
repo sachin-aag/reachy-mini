@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -16,11 +17,13 @@ from reachy_mini_grokbot.expressions import BUILTIN_EMOTIONS
 from reachy_mini_grokbot.mcp_server import start_mcp_thread
 from reachy_mini_grokbot.mode_controller import ModeController
 from reachy_mini_grokbot.settings_helpers import (
-    get_or_create_setup_pin,
+    check_gemini_key,
+    create_pin,
+    get_setup_status,
     mask_secret,
     parse_service_account_json,
+    reset_config_and_pin,
     save_service_account,
-    check_gemini_key,
     verify_auth_token,
 )
 from reachy_mini_grokbot.tools import bind_runtime, tool_dispatch
@@ -79,6 +82,18 @@ class GeminiTestRequest(BaseModel):
 
     api_key: str | None = Field(None, description="Key to test, or use configured key")
     auth_token: str = Field(description="Setup PIN or control token for auth")
+
+
+class CreatePinRequest(BaseModel):
+    """Create a new PIN during first-run setup."""
+
+    pin: str = Field(min_length=6, description="PIN (min 6 digits)")
+
+
+class ResetRequest(BaseModel):
+    """Reset PIN and secrets (only works shortly after app restart)."""
+
+    confirm: bool = Field(description="Must be true to confirm reset")
 
 
 class ReachyMiniGrokbot(ReachyMiniApp):
@@ -184,18 +199,36 @@ class ReachyMiniGrokbot(ReachyMiniApp):
                 "google_credentials_path": settings.google_credentials_path or "",
             }
 
-        @app.get("/setup-pin")
-        def get_setup_pin() -> dict[str, str]:
-            """Get the setup PIN for initial configuration.
+        @app.get("/setup-status")
+        def setup_status() -> dict[str, Any]:
+            """Get current setup status for first-run flow."""
+            return get_setup_status()
+
+        @app.post("/setup/create-pin")
+        def create_setup_pin(payload: CreatePinRequest) -> dict[str, Any]:
+            """Create a new PIN during first-run setup.
             
-            For security, this is only accessible from the robot itself (localhost).
-            It's shown in the daemon logs on first run.
+            Only works if:
+            - No PIN exists yet
+            - App is within the setup window (30 min after start)
             """
-            pin = get_or_create_setup_pin()
-            return {
-                "pin": pin,
-                "note": "Use this PIN or your REACHY_CONTROL_TOKEN to save settings",
-            }
+            success, message = create_pin(payload.pin)
+            return {"success": success, "message": message}
+
+        @app.post("/setup/reset")
+        def reset_setup(payload: ResetRequest) -> dict[str, Any]:
+            """Reset PIN and wipe all secrets.
+            
+            Only works within first 5 minutes after app restart.
+            Use this if you forgot your PIN.
+            """
+            if not payload.confirm:
+                return {"success": False, "message": "Must confirm reset."}
+            
+            success, message = reset_config_and_pin()
+            if success:
+                self._settings = load_settings()
+            return {"success": success, "message": message}
 
         @app.post("/config")
         def update_config(payload: ConfigUpdate) -> dict[str, Any]:
@@ -208,8 +241,9 @@ class ReachyMiniGrokbot(ReachyMiniApp):
         @app.post("/config/secrets")
         def update_secrets(payload: SecretsUpdate) -> dict[str, Any]:
             """Update secret configuration with PIN/token auth."""
-            if not verify_auth_token(payload.auth_token, settings):
-                return {"saved": False, "error": "Invalid auth token", "status_code": 401}
+            valid, error = verify_auth_token(payload.auth_token, settings)
+            if not valid:
+                return {"saved": False, "error": error, "status_code": 401}
             
             updates = {}
             for key in ["GEMINI_API_KEY", "REACHY_CONTROL_TOKEN", "REACHY_CONTROL_URL", 
@@ -235,8 +269,9 @@ class ReachyMiniGrokbot(ReachyMiniApp):
         @app.post("/config/service-account")
         def upload_service_account(payload: ServiceAccountUpload) -> dict[str, Any]:
             """Upload Google service account JSON."""
-            if not verify_auth_token(payload.auth_token, settings):
-                return {"saved": False, "error": "Invalid auth token", "status_code": 401}
+            valid, error = verify_auth_token(payload.auth_token, settings)
+            if not valid:
+                return {"saved": False, "error": error, "status_code": 401}
             
             sa_data, error = parse_service_account_json(payload.service_account_json)
             if error:
@@ -255,8 +290,9 @@ class ReachyMiniGrokbot(ReachyMiniApp):
         @app.post("/config/test-gemini")
         def test_gemini(payload: GeminiTestRequest) -> dict[str, Any]:
             """Test Gemini API key connectivity."""
-            if not verify_auth_token(payload.auth_token, settings):
-                return {"error": "Invalid auth token", "status_code": 401}
+            valid, error = verify_auth_token(payload.auth_token, settings)
+            if not valid:
+                return {"error": error, "status_code": 401}
             
             key_to_test = payload.api_key or settings.gemini_api_key
             if not key_to_test:

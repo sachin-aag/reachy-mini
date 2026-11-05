@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Reachy Mini × Grok Bot</title>
+    <title>Reachy Scribe & Docs Chat</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -12,10 +12,42 @@
 
 <body>
     <header>
-        <h1>Reachy Mini × Grok Bot</h1>
+        <h1>Reachy Scribe & Docs Chat</h1>
     </header>
     
     <main>
+        <!-- First-Run Setup Banner -->
+        <section id="setup-banner" class="card setup-banner" style="display: none;">
+            <h2>🎉 Welcome! First-Time Setup</h2>
+            <p>Create a PIN to secure your settings. This only works for the first <span id="setup-window">30</span> minutes after the app starts.</p>
+            
+            <div class="form-group">
+                <label for="new-pin">Create PIN (6+ digits)</label>
+                <div class="input-group">
+                    <input type="password" id="new-pin" placeholder="Enter 6+ digit PIN" pattern="[0-9]*" inputmode="numeric" autocomplete="off">
+                    <button type="button" class="btn btn-icon toggle-visibility">👁️</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="confirm-pin">Confirm PIN</label>
+                <div class="input-group">
+                    <input type="password" id="confirm-pin" placeholder="Confirm PIN" pattern="[0-9]*" inputmode="numeric" autocomplete="off">
+                    <button type="button" class="btn btn-icon toggle-visibility">👁️</button>
+                </div>
+            </div>
+            <button type="button" id="create-pin-btn" class="btn btn-primary btn-large">Create PIN</button>
+            <div id="pin-create-status" class="status-message"></div>
+        </section>
+
+        <!-- Forgot PIN / Reset Section -->
+        <section id="reset-section" class="card" style="display: none;">
+            <h2>⚠️ Forgot PIN?</h2>
+            <p>Reset is available for <span id="reset-window">5</span> minutes after app restart. This will <strong>delete all saved settings</strong> including API keys.</p>
+            <button type="button" id="reset-btn" class="btn btn-danger">Reset PIN & Settings</button>
+            <div id="reset-status" class="status-message"></div>
+            <p class="help-text">To reset later: restart the app from the Reachy Mini Control app, then come back here within 5 minutes.</p>
+        </section>
+
         <!-- Status Panel -->
         <section class="card status-panel">
             <h2>Status</h2>
@@ -56,17 +88,17 @@
         </section>
 
         <!-- Configuration Section -->
-        <section class="card config-section">
+        <section id="config-section" class="card config-section">
             <h2>Configuration</h2>
             
             <!-- Auth Token Input -->
             <div class="auth-section">
-                <label for="auth-token">Setup PIN or Control Token</label>
+                <label for="auth-token">Your PIN</label>
                 <div class="input-group">
-                    <input type="password" id="auth-token" placeholder="Enter PIN or token" autocomplete="off">
+                    <input type="password" id="auth-token" placeholder="Enter your PIN" pattern="[0-9]*" inputmode="numeric" autocomplete="off">
                     <button type="button" id="toggle-auth" class="btn btn-icon">👁️</button>
                 </div>
-                <p class="help-text">Required to save changes. Check robot logs for the setup PIN.</p>
+                <p class="help-text">Required to save changes. <a href="#" id="show-reset-link">Forgot PIN?</a></p>
             </div>
 
             <!-- API Keys Section -->
@@ -213,7 +245,7 @@
     </main>
 
     <footer>
-        <p>Settings saved to <code>~/.reachy_grokbot/config.json</code></p>
+        <p>Settings saved to <code>~/.reachy_grokbot/</code></p>
     </footer>
 
     <script src="/static/main.js"></script>

@@ -220,6 +220,15 @@ footer code {
     border-color: var(--primary);
 }
 
+.btn-danger {
+    background: var(--error);
+    color: white;
+}
+
+.btn-danger:hover, .btn-danger:active {
+    background: #d32f2f;
+}
+
 /* Button Grid */
 .button-grid {
     display: grid;
@@ -387,6 +396,16 @@ textarea {
     padding-bottom: 14px;
 }
 
+/* Setup banner */
+.setup-banner {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(33, 150, 243, 0.2));
+    border: 2px solid var(--success);
+}
+
+.setup-banner h2 {
+    color: var(--success);
+}
+
 /* Auth section */
 .auth-section {
     background: rgba(74, 144, 217, 0.1);
@@ -399,6 +418,11 @@ textarea {
 .auth-section label {
     color: var(--primary);
     font-weight: 500;
+}
+
+.auth-section a {
+    color: var(--primary);
+    text-decoration: underline;
 }
 
 /* Save section */

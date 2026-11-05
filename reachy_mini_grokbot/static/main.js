@@ -1,16 +1,35 @@
 /**
- * Reachy Mini × Grok Bot - Settings UI
- * Mobile-friendly configuration interface
+ * Reachy Scribe & Docs Chat - Settings UI
+ * Mobile-friendly configuration interface with first-run setup flow
  */
 
 const API_BASE = '';
 
 // State
 let currentConfig = {};
+let setupStatus = {};
 let statusPollInterval = null;
 
 // DOM Elements
 const elements = {
+    // Setup
+    setupBanner: document.getElementById('setup-banner'),
+    setupWindow: document.getElementById('setup-window'),
+    newPin: document.getElementById('new-pin'),
+    confirmPin: document.getElementById('confirm-pin'),
+    createPinBtn: document.getElementById('create-pin-btn'),
+    pinCreateStatus: document.getElementById('pin-create-status'),
+    
+    // Reset
+    resetSection: document.getElementById('reset-section'),
+    resetWindow: document.getElementById('reset-window'),
+    resetBtn: document.getElementById('reset-btn'),
+    resetStatus: document.getElementById('reset-status'),
+    showResetLink: document.getElementById('show-reset-link'),
+    
+    // Config section
+    configSection: document.getElementById('config-section'),
+    
     // Status
     currentMode: document.getElementById('current-mode'),
     controlStatus: document.getElementById('control-status'),
@@ -88,6 +107,128 @@ function formatTimeAgo(isoString) {
     if (diff < 60) return `${diff}s ago`;
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     return date.toLocaleTimeString();
+}
+
+function formatMinutes(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins > 0) return `${mins}m ${secs}s`;
+    return `${secs}s`;
+}
+
+// Setup flow
+async function fetchSetupStatus() {
+    try {
+        const response = await fetch(`${API_BASE}/setup-status`);
+        setupStatus = await response.json();
+        updateSetupUI();
+    } catch (error) {
+        console.error('Failed to fetch setup status:', error);
+    }
+}
+
+function updateSetupUI() {
+    const needsSetup = setupStatus.needs_first_run_setup;
+    const hasPin = setupStatus.has_pin;
+    const resetWindowOpen = setupStatus.reset_window_open;
+    
+    // Show/hide setup banner
+    if (needsSetup) {
+        elements.setupBanner.style.display = 'block';
+        elements.configSection.style.display = 'none';
+        elements.setupWindow.textContent = formatMinutes(setupStatus.setup_window_remaining_seconds);
+    } else {
+        elements.setupBanner.style.display = 'none';
+        elements.configSection.style.display = 'block';
+    }
+    
+    // Show/hide reset section
+    if (resetWindowOpen && !needsSetup) {
+        elements.resetWindow.textContent = formatMinutes(setupStatus.reset_window_remaining_seconds);
+    }
+}
+
+async function createPin() {
+    const pin = elements.newPin.value;
+    const confirm = elements.confirmPin.value;
+    
+    if (pin !== confirm) {
+        showMessage(elements.pinCreateStatus, 'PINs do not match', 'error');
+        return;
+    }
+    
+    if (pin.length < 6) {
+        showMessage(elements.pinCreateStatus, 'PIN must be at least 6 digits', 'error');
+        return;
+    }
+    
+    if (!/^\d+$/.test(pin)) {
+        showMessage(elements.pinCreateStatus, 'PIN must contain only digits', 'error');
+        return;
+    }
+    
+    elements.createPinBtn.disabled = true;
+    elements.createPinBtn.textContent = 'Creating...';
+    
+    try {
+        const response = await fetch(`${API_BASE}/setup/create-pin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin }),
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage(elements.pinCreateStatus, result.message, 'success');
+            elements.authToken.value = pin;
+            await fetchSetupStatus();
+            await fetchConfig();
+        } else {
+            showMessage(elements.pinCreateStatus, result.message, 'error');
+        }
+    } catch (error) {
+        showMessage(elements.pinCreateStatus, `Error: ${error.message}`, 'error');
+    } finally {
+        elements.createPinBtn.disabled = false;
+        elements.createPinBtn.textContent = 'Create PIN';
+    }
+}
+
+async function resetPinAndConfig() {
+    if (!confirm('This will DELETE your PIN and ALL saved settings including API keys. Are you sure?')) {
+        return;
+    }
+    
+    elements.resetBtn.disabled = true;
+    elements.resetBtn.textContent = 'Resetting...';
+    
+    try {
+        const response = await fetch(`${API_BASE}/setup/reset`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ confirm: true }),
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage(elements.resetStatus, result.message, 'success');
+            elements.authToken.value = '';
+            await fetchSetupStatus();
+            await fetchConfig();
+        } else {
+            showMessage(elements.resetStatus, result.message, 'error');
+        }
+    } catch (error) {
+        showMessage(elements.resetStatus, `Error: ${error.message}`, 'error');
+    } finally {
+        elements.resetBtn.disabled = false;
+        elements.resetBtn.textContent = 'Reset PIN & Settings';
+    }
+}
+
+function showResetSection() {
+    elements.resetSection.style.display = 'block';
+    elements.resetSection.scrollIntoView({ behavior: 'smooth' });
 }
 
 // API calls
@@ -169,7 +310,7 @@ async function fetchConfig() {
 async function saveSecrets() {
     const authToken = elements.authToken.value.trim();
     if (!authToken) {
-        showMessage(elements.saveStatus, 'Please enter the setup PIN or control token', 'error');
+        showMessage(elements.saveStatus, 'Please enter your PIN', 'error');
         return;
     }
     
@@ -248,7 +389,7 @@ async function saveSecrets() {
 async function testGeminiKey() {
     const authToken = elements.authToken.value.trim();
     if (!authToken) {
-        showMessage(elements.saveStatus, 'Please enter the setup PIN or control token first', 'error');
+        showMessage(elements.saveStatus, 'Please enter your PIN first', 'error');
         return;
     }
     
@@ -288,7 +429,7 @@ async function testGeminiKey() {
 async function uploadServiceAccount() {
     const authToken = elements.authToken.value.trim();
     if (!authToken) {
-        showMessage(elements.saveStatus, 'Please enter the setup PIN or control token first', 'error');
+        showMessage(elements.saveStatus, 'Please enter your PIN first', 'error');
         return;
     }
     
@@ -388,6 +529,16 @@ async function callTool(tool, args) {
 
 // Event listeners
 function setupEventListeners() {
+    // Create PIN
+    elements.createPinBtn.addEventListener('click', createPin);
+    
+    // Reset
+    elements.resetBtn.addEventListener('click', resetPinAndConfig);
+    elements.showResetLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        showResetSection();
+    });
+    
     // Toggle auth token visibility
     elements.toggleAuth.addEventListener('click', () => {
         const input = elements.authToken;
@@ -437,11 +588,15 @@ function setupEventListeners() {
 // Initialize
 async function init() {
     setupEventListeners();
+    await fetchSetupStatus();
     await fetchStatus();
     await fetchConfig();
     
     // Poll status every 5 seconds
-    statusPollInterval = setInterval(fetchStatus, 5000);
+    statusPollInterval = setInterval(async () => {
+        await fetchSetupStatus();
+        await fetchStatus();
+    }, 5000);
 }
 
 // Start when DOM is ready
